@@ -213,22 +213,6 @@ jobs:
             --commit-message "upstream ${{ steps.upstream.outputs.version }}" \
             --commit-dirty=true
 
-      - name: Health check
-        if: steps.check.outputs.needed == 'true'
-        run: |
-          URL="https://sub-store-workers.${{ secrets.WORKERS_SUBDOMAIN }}.workers.dev"
-          for i in 1 2 3; do
-            sleep 10
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL/")
-            echo "Attempt $i: HTTP $CODE"
-            if [ "$CODE" = "200" ] || [ "$CODE" = "302" ] || [ "$CODE" = "404" ]; then
-              echo "Worker is alive"
-              exit 0
-            fi
-          done
-          echo "::warning::Worker health check failed"
-          exit 0
-
       - name: Write job summary
         if: always() && steps.check.outputs.needed == 'true'
         run: |
