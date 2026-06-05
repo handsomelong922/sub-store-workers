@@ -118,15 +118,9 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Run upstream tests
-        id: upstream_tests
         if: steps.check.outputs.needed == 'true'
         working-directory: Sub-Store/backend
-        continue-on-error: true
         run: pnpm test
-
-      - name: Warn on upstream test failure
-        if: steps.check.outputs.needed == 'true' && steps.upstream_tests.outcome == 'failure'
-        run: echo "::warning::Upstream tests failed. Continuing sync because this workflow does not own upstream test health."
 
       - name: Install workers deps
         if: steps.check.outputs.needed == 'true'
