@@ -304,6 +304,70 @@ function deleteTokenItem(token, type, name) {
     return match;
 }
 
+function matchesShareToken(item, { token, type, name, pathname }) {
+    return (
+        item.token === token &&
+        (type ? item.type === type : true) &&
+        (name ? item.name === name : true) &&
+        (pathname
+            ? `/share/${item.type}/${item.name}` === pathname ||
+              pathname.startsWith(`/share/${item.type}/${item.name}/`)
+            : true)
+    );
+}
+
+function isShareTokenUsable(item) {
+    if (item.exp != null && item.exp <= Date.now()) {
+        return false;
+    }
+
+    if (item.mode === 'count') {
+        const count = Number(item.count);
+        const usedCount = item.usedCount == null ? 0 : Number(item.usedCount);
+        return (
+            Number.isSafeInteger(count) &&
+            count > 0 &&
+            Number.isSafeInteger(usedCount) &&
+            usedCount >= 0 &&
+            usedCount < count
+        );
+    }
+
+    return true;
+}
+
+function consumeShareToken(query) {
+    const allTokens = $.read(TOKENS_KEY) || [];
+    const tokenIndex = allTokens.findIndex(
+        (item) => matchesShareToken(item, query) && isShareTokenUsable(item),
+    );
+    if (tokenIndex < 0) {
+        return null;
+    }
+
+    const token = allTokens[tokenIndex];
+    if (token.mode !== 'count') {
+        return token;
+    }
+
+    const nextToken = {
+        ...token,
+        usedCount: Number(token.usedCount ?? 0) + 1,
+    };
+    allTokens[tokenIndex] = nextToken;
+    $.write(allTokens, TOKENS_KEY);
+    return nextToken;
+}
+
+function findShareToken(query) {
+    const allTokens = $.read(TOKENS_KEY) || [];
+    return (
+        allTokens.find(
+            (item) => matchesShareToken(item, query) && isShareTokenUsable(item),
+        ) || null
+    );
+}
+
 function shouldArchiveDeletion(mode) {
     if (mode == null || mode === '' || mode === 'permanent') {
         return false;
@@ -317,4 +381,4 @@ function shouldArchiveDeletion(mode) {
     );
 }
 
-export { createTokenItem, deleteTokenItem };
+export { createTokenItem, deleteTokenItem, consumeShareToken, findShareToken };
